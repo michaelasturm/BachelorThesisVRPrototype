@@ -9,26 +9,26 @@ EditorBuildSettings:
     path: Assets/Scenes/TutorialRoom.unity
     guid: f8957603b4a6db147900ec52a2186625
   - enabled: 1
-    path: Assets/Scenes/Eiswelt_kalt.unity
-    guid: 509a08e78b4e60e4ebbc170b5a0a2a43
-  - enabled: 0
-    path: Assets/Scenes/Eiswelt_neutral.unity
-    guid: cac42655337dcd44787713fecfb5673a
-  - enabled: 1
-    path: Assets/Scenes/Eiswelt_warm.unity
-    guid: a5fde6e2175665b48afa5261a2c8d581
-  - enabled: 1
-    path: Assets/Scenes/Feuerwelt_kalt.unity
-    guid: 9276862247da68a44b8787fa1f82d2e1
-  - enabled: 0
-    path: Assets/Scenes/Feuerwelt_neutral.unity
-    guid: 6a9a5492d8b4648459a7361173dd6bbb
-  - enabled: 1
-    path: Assets/Scenes/Feuerwelt_warm.unity
-    guid: f5f2fe8ba74d2754488162a4c3763c74
-  - enabled: 1
     path: Assets/Scenes/QuestionnaireRoom.unity
     guid: 55daccc09a3b69647bbab145b54a3ab3
+  - enabled: 1
+    path: Assets/Scenes/Eiswelt_noSound.unity
+    guid: 509a08e78b4e60e4ebbc170b5a0a2a43
+  - enabled: 1
+    path: Assets/Scenes/Feuerwelt_noSound.unity
+    guid: f5f2fe8ba74d2754488162a4c3763c74
+  - enabled: 1
+    path: Assets/Scenes/Eiswelt_iceSound.unity
+    guid: a2a889ab234407c428834c86097f80a6
+  - enabled: 1
+    path: Assets/Scenes/Feuerwelt_firesound.unity
+    guid: 9c1e5f5fb209aa54bb55b31033589c34
+  - enabled: 1
+    path: Assets/Scenes/Eiswelt_fireSound.unity
+    guid: 533d1b7a0a902d846ae539132d92b2be
+  - enabled: 1
+    path: Assets/Scenes/Feuerwelt_icesound.unity
+    guid: 139af386b7666b44e9e634d4f9bd25a9
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

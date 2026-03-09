@@ -12,7 +12,7 @@ public class EnvGameManager : MonoBehaviour
 {
     // Target stuff
     [Header("TargetManager")]
-    private float targetTimout = 7f; // TODO 7f
+    [SerializeField] private float targetTimout = 2f;// TODO 7f
     private float targetTimer = 0f;
     public GameObject targetHolder;
     private int numTargets;
@@ -27,12 +27,15 @@ public class EnvGameManager : MonoBehaviour
     public Camera cam;
     public GameObject reticle;
     private float gazeTimer = 0f;
-    private float minGazeTime = 5f;
+
+    [Header("Gaze Interaction Manager")]
+    [SerializeField] private float minGazeTime = 1f; //TODO 5f
     private Image timeFeedback;
 
     // questionnaire stuff
+
     [Header("Questionnaire Manager")]
-    private float questionnaireTimeInterval = 90f; // TODO 90
+    [SerializeField] private float questionnaireTimeInterval = 10f; //TODO 90f
     private int questionnaireCount = 0; // TODO
     private bool isQuestionaireDone = false;
     public Slider slider;
@@ -45,7 +48,10 @@ public class EnvGameManager : MonoBehaviour
     // Scene Manager
     private float sceneTimer = 0f;
     private float questionTimer = 0f;
-    private float maxSceneTime = 600f; // TODO 10 minutes
+
+    [Header("Scene Manager")]
+    [SerializeField] private float maxSceneTime = 30f; //TODO 10 minutes?
+
     private TextWriter tw;
     private string filePath = Application.dataPath + "/CSV-Data/env_.csv";
     public GameObject leftControllerRay;
@@ -64,7 +70,9 @@ public class EnvGameManager : MonoBehaviour
         userId = PlayerPrefs.GetInt("pid");
         envIndex = PlayerPrefs.GetInt("s"+currentScene);
         Debug.Log("counter: " + currentScene + ", index: " + envIndex);
-        filePath = Application.dataPath + "/CSV-Data/" + userId + "_count" + currentScene + "_env" + envIndex + "_sensation.csv" ;
+        string dir = Path.Combine(Application.persistentDataPath, "CSV-Data");
+        Directory.CreateDirectory(dir);
+        filePath = Path.Combine(dir, $"{userId}_count{currentScene}_env{envIndex}_sensation.csv");
     }
 
     // Update is called once per frame
@@ -115,22 +123,20 @@ public class EnvGameManager : MonoBehaviour
         questionTimer += Time.deltaTime;
 
         // do things that must be done when its no question time
-        if (questionTimer >= questionnaireTimeInterval)
+        if (!isQuestionTime && questionTimer >= questionnaireTimeInterval)
         {
-            // Show the questionnaire
             Debug.Log("Question Time!");
             resetTargets();
             ShowQuestionnaire();
             isQuestionTime = true;
-            // Reset sceneTimer for the next interval
             questionTimer = 0f;
         }
 
         if (sceneTimer >= maxSceneTime && isQuestionaireDone)
         {
             // scene change
-            // TODO 5
-            SceneManager.LoadScene(5); // TODO
+            // TODO 1
+            SceneManager.LoadScene(1); // TODO
         }
     }
 
@@ -185,17 +191,45 @@ public class EnvGameManager : MonoBehaviour
     {
         Ray ray = new Ray(cam.transform.position, cam.transform.forward);
         RaycastHit[] hits = Physics.RaycastAll(ray);
-        // Vector3 hitPosition = new Vector3(0, 0, 0);
-        bool isTargetHit = checkTargetHit(hits);
 
+        bool isTargetHit = false;
+        float closestDistance = float.MaxValue;
+        RaycastHit closestTargetHit = new RaycastHit();
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider.CompareTag("target"))
+            {
+                if (hit.distance < closestDistance)
+                {
+                    closestDistance = hit.distance;
+                    closestTargetHit = hit;
+                    isTargetHit = true;
+                }
+            }
+        }
 
         if (isTargetHit)
         {
+            hitPosition = closestTargetHit.point;
+            timeFeedback = closestTargetHit.transform.GetComponentInChildren<Image>();
             startGaze();
         }
         else
         {
             resetGaze();
+        }
+    }
+
+    private void resetGaze()
+    {
+        reticle.SetActive(false);
+        gazeTimer = 0f;
+
+        if (timeFeedback != null)
+        {
+            timeFeedback.fillAmount = 0f;
+            timeFeedback = null;
         }
     }
 
@@ -248,20 +282,6 @@ public class EnvGameManager : MonoBehaviour
         }
         isTargetTimeout = true;
         isTargetVisible = false;
-    }
-
-    private void resetGaze()
-    {
-        reticle.SetActive(false);
-        if (gazeTimer > 0)
-        {
-            gazeTimer -= Time.deltaTime;
-        }
-        if (timeFeedback != null)
-        {
-            timeFeedback.fillAmount = gazeTimer / minGazeTime;
-        }
-
     }
 
 }

@@ -1,68 +1,62 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using UnityEditor;
 using UnityEngine;
 
 public class HMDTracker : MonoBehaviour
 {
     public GameObject HMD;
-    private TextWriter tw;
-    private string fileName = Application.dataPath + "/CSV-Data/hmd.csv";
-    private WaitForSeconds freq = new WaitForSeconds(0.05f); // 30 fps
+    [SerializeField] private float sampleInterval = 0.05f;
+
+    private string fileName;
     private int userId;
     private int envIndex;
-    // Start is called before the first frame update
+
     void Start()
     {
-        int currentScene = PlayerPrefs.GetInt("scene counter"); // 1 - Feuer, 2 - Eis
+        int currentScene = PlayerPrefs.GetInt("scene counter");
         userId = PlayerPrefs.GetInt("pid");
-        envIndex = PlayerPrefs.GetInt("s"+currentScene);
-        fileName = Application.dataPath + "/CSV-Data/" + userId + "_count" + currentScene + "_env" + envIndex + "_hmd.csv" ;
+        envIndex = PlayerPrefs.GetInt("s" + currentScene);
 
-        tw = new StreamWriter(fileName, true);
-        string header = "id;scene;timestamp;x;y;z;rx;ry;rz";
-        tw.WriteLine(header);
-        tw.Close();
+        string dir = Path.Combine(Application.persistentDataPath, "CSV-Data");
+        Directory.CreateDirectory(dir);
+        fileName = Path.Combine(dir, $"{userId}_count{currentScene}_env{envIndex}_hmd.csv");
+
+        if (!File.Exists(fileName))
+        {
+            using (StreamWriter tw = new StreamWriter(fileName, true))
+            {
+                tw.WriteLine("id;scene;timestamp;x;y;z;rx;ry;rz");
+            }
+        }
 
         StartCoroutine(collectCamData());
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        // float xPos = HMD.transform.position.x;
-        // float yPos = HMD.transform.position.y;
-        // float zPos = HMD.transform.position.z;
-
-        // float xRot = HMD.transform.rotation.eulerAngles.x;
-        // float yRot = HMD.transform.rotation.eulerAngles.y;
-        // float zRot = HMD.transform.rotation.eulerAngles.z;
-
-        // string dataPoint = "test" + ";" + DateTime.Now +";"+xPos + ";" + yPos + ";" + zPos + ";" + xRot + ";" + yRot + ";" + zRot;
-        // tw = new StreamWriter(fileName, true);
-        // tw.WriteLine(dataPoint);
-        // tw.Close();
-    }
-
     private IEnumerator collectCamData()
     {
+        WaitForSeconds wait = new WaitForSeconds(sampleInterval);
+
         while (true)
         {
-            float xPos = HMD.transform.position.x;
-            float yPos = HMD.transform.position.y;
-            float zPos = HMD.transform.position.z;
+            if (HMD != null)
+            {
+                Vector3 pos = HMD.transform.position;
+                Vector3 rot = HMD.transform.rotation.eulerAngles;
 
-            float xRot = HMD.transform.rotation.eulerAngles.x;
-            float yRot = HMD.transform.rotation.eulerAngles.y;
-            float zRot = HMD.transform.rotation.eulerAngles.z;
-            string dataPoint = userId + ";" + envIndex + ";"+ DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ";" + xPos + ";" + yPos + ";" + zPos + ";" + xRot + ";" + yRot + ";" + zRot;
-            tw = new StreamWriter(fileName, true);
-            tw.WriteLine(dataPoint);
-            tw.Close();
-            yield return freq;
+                using (StreamWriter tw = new StreamWriter(fileName, true))
+                {
+                    tw.WriteLine(
+                        userId + ";" +
+                        envIndex + ";" +
+                        DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ";" +
+                        pos.x + ";" + pos.y + ";" + pos.z + ";" +
+                        rot.x + ";" + rot.y + ";" + rot.z
+                    );
+                }
+            }
+
+            yield return wait;
         }
     }
 }

@@ -5316,7 +5316,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   latinSquareCsv: {fileID: 4900000, guid: 582820386d57cb24b837da2f6ce1f5e3, type: 3}
   finishedIds: {fileID: 4900000, guid: 1586be235b3feaa459f0fb9102c5f9ae, type: 3}
-  pid: 1
+  pid: 2
+  totalConditions: 6
 --- !u!1 &1276320679
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,406 +1,514 @@
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
-using System.IO;
 using System;
-using UnityEditor.SearchService;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using TMPro;
+using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class QuestionnaireManager : MonoBehaviour
 {
-    // timer stuff
-    private float timer = 0f;
-    private float minWaitTime = 120f; // TODO 2 minutes TODO
-    private bool isWaiting = true;
+    [Header("Study Flow")]
+    [SerializeField] private float minWaitTime = 3f;
+    [SerializeField] private int totalConditions = 6;
+    [SerializeField] private int[] soundEnvironmentIds;
 
-    // Comfort
-    [Header("Thermal Comfort Data")]
-    public GameObject comfortUI;
-    public ToggleGroup tgComfort;
-    private string comfortAnswer;
+    [Header("Waiting UI")]
+    [SerializeField] private Image timeFeedback;
+    [SerializeField] private GameObject timeFeedbackUI;
+    [SerializeField] private GameObject finishUI;
+
+    [Header("Thermal Comfort UI")]
+    [SerializeField] private GameObject comfortUI;
+    [SerializeField] private ToggleGroup tgComfort;
+
+    [Header("IPQ UI")]
+    [SerializeField] private GameObject ipqUi;
+    [SerializeField] private ToggleGroup tgIPQ;
+    [SerializeField] private TextMeshProUGUI questionHeader;
+    [SerializeField] private TextMeshProUGUI textAnchorNegative;
+    [SerializeField] private TextMeshProUGUI textAnchorPositive;
+    [SerializeField] private TextAsset csvFile;
+
+    [Header("Sound UI")]
+    [SerializeField] private GameObject soundUi;
+    [SerializeField] private ToggleGroup tgSound;
+    [SerializeField] private TextMeshProUGUI soundQuestionHeader;
+    [SerializeField] private TextMeshProUGUI soundAnchorLeft;
+    [SerializeField] private TextMeshProUGUI soundAnchorRight;
+    [SerializeField] private TextAsset csvFileSound;
+
+    private QuestionnaireItem[] ipqQuestions = Array.Empty<QuestionnaireItem>();
+    private QuestionnaireItem[] soundQuestions = Array.Empty<QuestionnaireItem>();
+
+    private string[] ipqItemNames = Array.Empty<string>();
+    private string[] soundItemNames = Array.Empty<string>();
+
+    private string[] ipqAnswers = Array.Empty<string>();
+    private string[] soundAnswers = Array.Empty<string>();
+
+    private int currentIpqQuestion = 0;
+    private int currentSoundQuestion = 0;
+
+    private string comfortAnswer = string.Empty;
     private bool isComfortAnswered = false;
+    private bool isIpqAnswered = false;
+    private bool isSoundAnswered = false;
+    private bool conditionHasSound = false;
 
-    // IPQ
-    [Header("IPQ Data")]
-    public GameObject ipqUi;
-    public ToggleGroup tgIPQ;
-    public TextMeshProUGUI textAnchorPositive;
-    public TextMeshProUGUI textAnchorNegative;
-    public TextMeshProUGUI questionHeader;
-    //private string filePath = "Assets/Scripts/comfort_test.cs";
-    private IPQ_Question[] questions;
-    private string[] ipqItemNames;
-    public TextAsset csvFile;
-    private string[] ipqAnswers;
-    private int currentQuestion = 0; 
-    public bool isIPQAnswered = false;
+    private bool isTransitionPending = false;
+    private float timer = 0f;
 
-    //PANAS
-    [Header("Panas Data")]
-    public GameObject panasUi;
-    public ToggleGroup tgPANAS;
-    public TextMeshProUGUI textAnchor1Panas;
-    public TextMeshProUGUI textAnchor2Panas;
-    public TextMeshProUGUI textAnchor3Panas;
-    public TextMeshProUGUI textAnchor4Panas;
-    public TextMeshProUGUI textAnchor5Panas;
-    public TextMeshProUGUI questionHeaderPanas;
-    //private string filePath = "Assets/Scripts/comfort_test.cs";
-    private PANAS_Question[] questionsPanas;
-    private string[] panasItemNames;
-    public TextAsset csvFilePanas;
-    private string[] panasAnswers;
-    private int currentQuestionPanas = 0;
-    public bool isPanasAnswered = false;
-    //public GameObject wait_ui;
-
-    // csv things
-    private TextWriter tw;
     private int scenecounter;
     private int envIndex;
     private int userId;
-    private string filePath = Application.dataPath + "/CSV-Data/qr.csv";
+    private string filePath;
     private string filePathFinishedIds;
-    //wait things
-    [Header("Waiting Data")]
-    public Image timeFeedback;
-    public GameObject timeFeedbackUI;
-    public GameObject finishUI;
 
-
-
-
-    // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
-        loadIPQ();
-        loadPanas();
-        setIPQQuestion(); //it's the first one
-        setPanasQuestion();
-        //does this work with active = false?
         scenecounter = PlayerPrefs.GetInt("scene counter");
         userId = PlayerPrefs.GetInt("pid");
-        envIndex = PlayerPrefs.GetInt("s"+scenecounter);
-        filePath = Application.dataPath + "/CSV-Data/" + userId + "_count" + scenecounter + "_env" + envIndex + "_ipq_comfort.csv" ;
-        filePathFinishedIds = Application.dataPath + "/CSV-Data/FinishedIDs/finishedIds.csv";
+        envIndex = PlayerPrefs.GetInt("s" + scenecounter);
+
+        conditionHasSound = HasSound(envIndex);
+
+        BuildPaths();
+        LoadQuestions();
+        ResetState();
+        PrepareUI();
+
+        if (ipqQuestions.Length == 0)
+        {
+            Debug.LogError("No IPQ questions loaded. Questionnaire cannot start.");
+            return;
+        }
+
+        SetIpqQuestion();
+
+        if (conditionHasSound && soundQuestions.Length == 0)
+        {
+            Debug.LogWarning("This condition expects sound questions, but none were loaded. Sound block will be skipped.");
+            conditionHasSound = false;
+            FillSoundAnswersWith("NA");
+        }
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        if (isWaiting)
+        if (!isTransitionPending)
         {
-            if (timer <= minWaitTime)
-            {
-                timer += Time.deltaTime;
-                if (isIPQAnswered && isPanasAnswered) {
-                    timeFeedback.fillAmount = timer / minWaitTime;
-                }
-            }
-            else
-            {
-                isWaiting = false;
-            }
+            return;
         }
-        else 
-        {
-            if (isIPQAnswered && isComfortAnswered  && isPanasAnswered)
-            {
-                if (scenecounter < 5) {
-                    string scenePref = "s" + scenecounter;
-                    int sceneIndex = PlayerPrefs.GetInt(scenePref);
-                    //Debug.Log("Loading " + sceneIndex);
-                    SceneManager.LoadScene(sceneIndex);
-                }
-                else
-                {
 
-                }
-                
-            }
+        timer += Time.deltaTime;
+
+        if (timeFeedback != null)
+        {
+            timeFeedback.fillAmount = minWaitTime > 0f ? Mathf.Clamp01(timer / minWaitTime) : 1f;
         }
+
+        if (timer < minWaitTime)
+        {
+            return;
+        }
+
+        isTransitionPending = false;
+        LoadNextScene();
     }
 
     public void checkComfortQ()
     {
-        Toggle toggle = tgComfort.ActiveToggles().First();
-        if (toggle != null)
+        Toggle toggle = tgComfort.ActiveToggles().FirstOrDefault();
+        if (toggle == null)
         {
-            comfortAnswer = toggle.name;
-            // Debug.Log("Comfort: " + comfortAnswer);
-            isComfortAnswered = true;
-            comfortUI.SetActive(false);
-            ipqUi.SetActive(true);
+            Debug.Log("No comfort option selected.");
+            return;
         }
-        // else show input text pls
 
-    }
+        comfortAnswer = GetToggleValue(toggle);
+        isComfortAnswered = true;
 
-    public void checkPanas()
-    {
-        Toggle toggle = tgPANAS.ActiveToggles().First();
-
-        if (toggle != null)
-        {
-
-            // save answers
-            //Debug.Log("current question: " + currentQuestion);
-            panasAnswers[currentQuestionPanas] = toggle.name;
-
-            // Debug.Log("Current: " + currentQuestion + "answer: " + ipqAnswers[currentQuestion]);
-
-
-            if (currentQuestionPanas < panasAnswers.Length - 1) // < 13
-            {
-                currentQuestionPanas += 1;
-                resetPanasToggles();
-                setPanasQuestion();
-            }
-            else
-            {
-                Debug.Log("PANAS_done");
-                // writecsv
-                writeQuestionnaireCSV();
-                isPanasAnswered = true;
-                panasUi.SetActive(false);
-                if (scenecounter >= 5)
-                {
-                    finishUI.gameObject.SetActive(true);
-                    writeFinishedID();
-                }
-                else
-                {
-                    timeFeedbackUI.SetActive(true);
-                }
-            }
-        }
+        comfortUI.SetActive(false);
+        ipqUi.SetActive(true);
+        ResetToggles(tgComfort);
     }
 
     public void checkIPQ()
     {
-        Toggle toggle = tgIPQ.ActiveToggles().First();
-
-        if (toggle != null)
+        Toggle toggle = tgIPQ.ActiveToggles().FirstOrDefault();
+        if (toggle == null)
         {
+            Debug.Log("No IPQ option selected.");
+            return;
+        }
 
-            // save answers
-            //Debug.Log("current question: " + currentQuestion);
-            ipqAnswers[currentQuestion] = toggle.name;
+        ipqAnswers[currentIpqQuestion] = GetToggleValue(toggle);
 
-            // Debug.Log("Current: " + currentQuestion + "answer: " + ipqAnswers[currentQuestion]);
+        if (currentIpqQuestion < ipqQuestions.Length - 1)
+        {
+            currentIpqQuestion++;
+            ResetToggles(tgIPQ);
+            SetIpqQuestion();
+            return;
+        }
 
+        isIpqAnswered = true;
+        ipqUi.SetActive(false);
+        ResetToggles(tgIPQ);
 
-            if (currentQuestion < ipqAnswers.Length - 1) // < 13
+        BeginSoundBlockOrFinish();
+    }
+
+    public void checkSound()
+    {
+        if (!conditionHasSound)
+        {
+            Debug.LogWarning("checkSound() was called, but this condition has no sound block.");
+            return;
+        }
+
+        Toggle toggle = tgSound.ActiveToggles().FirstOrDefault();
+        if (toggle == null)
+        {
+            Debug.Log("No sound option selected.");
+            return;
+        }
+
+        soundAnswers[currentSoundQuestion] = GetToggleValue(toggle);
+
+        if (currentSoundQuestion < soundQuestions.Length - 1)
+        {
+            currentSoundQuestion++;
+            ResetToggles(tgSound);
+            SetSoundQuestion();
+            return;
+        }
+
+        isSoundAnswered = true;
+        soundUi.SetActive(false);
+        ResetToggles(tgSound);
+
+        FinishQuestionnaire();
+    }
+
+    private void BuildPaths()
+    {
+        string dir = Path.Combine(Application.persistentDataPath, "CSV-Data");
+        string finishedDir = Path.Combine(dir, "FinishedIDs");
+        Directory.CreateDirectory(dir);
+        Directory.CreateDirectory(finishedDir);
+
+        filePath = Path.Combine(dir, $"{userId}_count{scenecounter}_env{envIndex}_questionnaire.csv");
+        filePathFinishedIds = Path.Combine(finishedDir, "finishedIds.csv");
+    }
+
+    private void LoadQuestions()
+    {
+        LoadCsvIntoArrays(csvFile, out ipqQuestions, out ipqItemNames, out ipqAnswers);
+        LoadCsvIntoArrays(csvFileSound, out soundQuestions, out soundItemNames, out soundAnswers);
+    }
+
+    private void LoadCsvIntoArrays(
+        TextAsset source,
+        out QuestionnaireItem[] questions,
+        out string[] itemNames,
+        out string[] answers)
+    {
+        List<QuestionnaireItem> questionList = new List<QuestionnaireItem>();
+        List<string> itemList = new List<string>();
+
+        if (source == null)
+        {
+            questions = Array.Empty<QuestionnaireItem>();
+            itemNames = Array.Empty<string>();
+            answers = Array.Empty<string>();
+            return;
+        }
+
+        foreach (string rawLine in source.text.Split('\n'))
+        {
+            string line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line))
             {
-                currentQuestion += 1;
-                resetIPQToggles();
-                setIPQQuestion();
+                continue;
             }
-            else
+
+            string[] values = line.Split(';');
+            if (values.Length < 4)
             {
-                Debug.Log("IPQ_done");
-                // writecsv
-                //writeQuestionnaireCSV();
-                isIPQAnswered = true;
-                ipqUi.SetActive(false);
-                panasUi.SetActive(true);
-                //if (scenecounter >= 5) {
-                    //finishUI.gameObject.SetActive(true);
-                    //writeFinishedID();
-                //} else {
-                    //timeFeedbackUI.SetActive(true);
-                //}       
+                continue;
             }
-        }
-    }
 
-    private void loadIPQ()
-    {
-        string[] lines = csvFile.text.Split('\n');
-
-        questions = new IPQ_Question[lines.Length];
-        ipqItemNames = new string[lines.Length];
-        ipqAnswers = new string[lines.Length];
-
-        for (int i = 0; i < lines.Length; i++)
-        {
-            string[] values = lines[i].Split(';');
-
-            if (values.Length == 4)
+            if (values[1].Trim().Equals("question", StringComparison.OrdinalIgnoreCase))
             {
-                ipqItemNames[i] = values[0];
-                IPQ_Question ipq_question = new IPQ_Question(values[1], values[2], values[3]);
-                questions[i] = ipq_question;
-                //questions[i] = new IPQ_Question(values[0], values[1], values[2]);
+                continue;
             }
+
+            itemList.Add(values[0].Trim().TrimStart('\uFEFF'));
+            questionList.Add(new QuestionnaireItem(
+                values[1].Trim(),
+                values[2].Trim(),
+                values[3].Trim()
+            ));
+        }
+
+        questions = questionList.ToArray();
+        itemNames = itemList.ToArray();
+        answers = new string[questions.Length];
+    }
+
+    private void ResetState()
+    {
+        currentIpqQuestion = 0;
+        currentSoundQuestion = 0;
+
+        comfortAnswer = string.Empty;
+        isComfortAnswered = false;
+        isIpqAnswered = false;
+        isSoundAnswered = !conditionHasSound;
+
+        timer = 0f;
+        isTransitionPending = false;
+
+        FillAnswersWith(ipqAnswers, string.Empty);
+        FillAnswersWith(soundAnswers, conditionHasSound ? string.Empty : "NA");
+    }
+
+    private void PrepareUI()
+    {
+        if (comfortUI != null) comfortUI.SetActive(true);
+        if (ipqUi != null) ipqUi.SetActive(false);
+        if (soundUi != null) soundUi.SetActive(false);
+        if (timeFeedbackUI != null) timeFeedbackUI.SetActive(false);
+        if (finishUI != null) finishUI.SetActive(false);
+
+        if (timeFeedback != null)
+        {
+            timeFeedback.fillAmount = 0f;
         }
     }
 
-    private void loadPanas()
+    private void SetIpqQuestion()
     {
-        string[] lines = csvFilePanas.text.Split('\n');
-
-        questionsPanas = new PANAS_Question[lines.Length];
-        panasItemNames = new string[lines.Length];
-        panasAnswers = new string[lines.Length];
-
-        for (int i = 0; i < lines.Length; i++)
+        if (ipqQuestions.Length == 0 || currentIpqQuestion >= ipqQuestions.Length)
         {
-            string[] values = lines[i].Split(';');
+            return;
+        }
 
-            if (values.Length == 7)
+        questionHeader.text = ipqQuestions[currentIpqQuestion].Question;
+        textAnchorNegative.text = ipqQuestions[currentIpqQuestion].AnchorLeft;
+        textAnchorPositive.text = ipqQuestions[currentIpqQuestion].AnchorRight;
+    }
+
+    private void SetSoundQuestion()
+    {
+        if (soundQuestions.Length == 0 || currentSoundQuestion >= soundQuestions.Length)
+        {
+            return;
+        }
+
+        soundQuestionHeader.text = soundQuestions[currentSoundQuestion].Question;
+        soundAnchorLeft.text = soundQuestions[currentSoundQuestion].AnchorLeft;
+        soundAnchorRight.text = soundQuestions[currentSoundQuestion].AnchorRight;
+    }
+
+    private void BeginSoundBlockOrFinish()
+    {
+        if (conditionHasSound && soundQuestions.Length > 0)
+        {
+            soundUi.SetActive(true);
+            SetSoundQuestion();
+            return;
+        }
+
+        FillSoundAnswersWith("NA");
+        isSoundAnswered = true;
+        FinishQuestionnaire();
+    }
+
+    private void FinishQuestionnaire()
+    {
+        if (!isComfortAnswered || !isIpqAnswered || !isSoundAnswered)
+        {
+            Debug.LogWarning("Tried to finish questionnaire before all required parts were answered.");
+            return;
+        }
+
+        WriteQuestionnaireCSV();
+
+        int nextCounter = PlayerPrefs.GetInt("scene counter");
+
+        if (nextCounter > totalConditions)
+        {
+            if (finishUI != null)
             {
-                panasItemNames[i] = values[0];
-                PANAS_Question panas_question = new PANAS_Question(values[1], values[2], values[3], values[4], values[5], values[6]);
-                questionsPanas[i] = panas_question;
-                //questions[i] = new IPQ_Question(values[0], values[1], values[2]);
+                finishUI.SetActive(true);
             }
+
+            WriteFinishedID();
+            return;
         }
-    }
 
-    private void setPanasQuestion()
-    {
-        questionHeaderPanas.text = questionsPanas[currentQuestionPanas].get_question();
-        textAnchor1Panas.text = questionsPanas[currentQuestionPanas].get_anchor1();
-        textAnchor2Panas.text = questionsPanas[currentQuestionPanas].get_anchor2();
-        textAnchor3Panas.text = questionsPanas[currentQuestionPanas].get_anchor3();
-        textAnchor4Panas.text = questionsPanas[currentQuestionPanas].get_anchor4();
-        textAnchor5Panas.text = questionsPanas[currentQuestionPanas].get_anchor5();
-    }
-
-    private void setIPQQuestion()
-    {
-        questionHeader.text = questions[currentQuestion].get_question();
-        textAnchorPositive.text = questions[currentQuestion].get_positive_anchor();
-        textAnchorNegative.text = questions[currentQuestion].get_negative_anchor();
-    }
-
-    private void resetIPQToggles()
-    {
-        Toggle[] toggles = tgIPQ.GetComponentsInChildren<Toggle>();
-
-        foreach (Toggle toggle in toggles)
+        if (timeFeedbackUI != null)
         {
-            toggle.isOn = false;
+            timeFeedbackUI.SetActive(true);
         }
-    }
 
-    private void resetPanasToggles()
-    {
-        Toggle[] toggles = tgPANAS.GetComponentsInChildren<Toggle>();
-
-        foreach (Toggle toggle in toggles)
+        if (timeFeedback != null)
         {
-            toggle.isOn = false;
+            timeFeedback.fillAmount = 0f;
         }
+
+        timer = 0f;
+        isTransitionPending = true;
     }
 
-    private void writeQuestionnaireCSV()
+    private void WriteQuestionnaireCSV()
     {
-        string header = "id;scene; time;" + "comfort;" + string.Join(";", ipqItemNames)+ ";" +string.Join(";",panasItemNames);
-        tw = new StreamWriter(filePath, true);
-        tw.WriteLine(header);
-        string answers = userId + ";" + envIndex + ";" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + ";" + comfortAnswer + ";" +
-                            string.Join(";", ipqAnswers) + ";" + string.Join(";",panasAnswers);
+        bool writeHeader = !File.Exists(filePath);
 
-        tw.WriteLine(answers);
-        tw.Close();
-        Debug.Log("csv should be written now");
+        using (StreamWriter tw = new StreamWriter(filePath, true))
+        {
+            if (writeHeader)
+            {
+                List<string> headerParts = new List<string>
+                {
+                    "id",
+                    "scene",
+                    "time",
+                    "comfort"
+                };
+
+                headerParts.AddRange(ipqItemNames);
+                headerParts.AddRange(soundItemNames);
+
+                tw.WriteLine(string.Join(";", headerParts));
+            }
+
+            List<string> answerParts = new List<string>
+            {
+                userId.ToString(),
+                envIndex.ToString(),
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(),
+                comfortAnswer
+            };
+
+            answerParts.AddRange(ipqAnswers);
+            answerParts.AddRange(soundAnswers);
+
+            tw.WriteLine(string.Join(";", answerParts));
+        }
+
         scenecounter += 1;
         PlayerPrefs.SetInt("scene counter", scenecounter);
-        // Debug.Log(PlayerPrefs.GetInt("scene counter"));
+        PlayerPrefs.Save();
     }
 
-    private void writeFinishedID()
+    private void WriteFinishedID()
     {
-        tw = new StreamWriter(filePathFinishedIds, true);
-        string answers = "\n" + PlayerPrefs.GetInt("pid") + ";" + PlayerPrefs.GetString("starttime")+";"+ DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        tw.Write(answers);
-        tw.Close();
+        bool writeHeader = !File.Exists(filePathFinishedIds);
 
+        using (StreamWriter tw = new StreamWriter(filePathFinishedIds, true))
+        {
+            if (writeHeader)
+            {
+                tw.WriteLine("ID;starttime;endtime");
+            }
+
+            tw.WriteLine(
+                PlayerPrefs.GetInt("pid") + ";" +
+                PlayerPrefs.GetString("starttime") + ";" +
+                DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+        }
     }
 
-
-}
-
-public class PANAS_Question
-{
-    private string question;
-    private string anchor_1;
-    private string anchor_2;
-    private string anchor_3;
-    private string anchor_4;
-    private string anchor_5;
-
-    public PANAS_Question(string question, string anchor_1, string anchor_2, string anchor_3, string anchor_4, string anchor_5)
+    private void LoadNextScene()
     {
-        this.question = question;
-        this.anchor_1 = anchor_1;
-        this.anchor_2 = anchor_2;
-        this.anchor_3 = anchor_3;
-        this.anchor_4 = anchor_4;
-        this.anchor_5 = anchor_5;
+        int nextCounter = PlayerPrefs.GetInt("scene counter");
+
+        if (nextCounter > totalConditions)
+        {
+            return;
+        }
+
+        int nextSceneIndex = PlayerPrefs.GetInt("s" + nextCounter, -1);
+        if (nextSceneIndex < 0)
+        {
+            Debug.LogError($"No scene assigned for s{nextCounter}.");
+            return;
+        }
+
+        SceneManager.LoadScene(nextSceneIndex);
     }
 
-    public string get_question()
+    private bool HasSound(int environmentId)
     {
-        return question;
+        if (soundEnvironmentIds == null || soundEnvironmentIds.Length == 0)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < soundEnvironmentIds.Length; i++)
+        {
+            if (soundEnvironmentIds[i] == environmentId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
-    public string get_anchor1()
+    private string GetToggleValue(Toggle toggle)
     {
-        return anchor_1;
+        return toggle.name.Trim();
     }
 
-    public string get_anchor2()
+    private void FillSoundAnswersWith(string value)
     {
-        return anchor_2;
+        FillAnswersWith(soundAnswers, value);
     }
 
-    public string get_anchor3()
+    private void FillAnswersWith(string[] answers, string value)
     {
-        return anchor_3;
+        if (answers == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < answers.Length; i++)
+        {
+            answers[i] = value;
+        }
     }
 
-    public string get_anchor4()
+    private void ResetToggles(ToggleGroup toggleGroup)
     {
-        return anchor_4;
+        if (toggleGroup == null)
+        {
+            return;
+        }
+
+        foreach (Toggle toggle in toggleGroup.GetComponentsInChildren<Toggle>(true))
+        {
+            toggle.isOn = false;
+        }
     }
 
-    public string get_anchor5()
+    [Serializable]
+    public class QuestionnaireItem
     {
-        return anchor_5;
-    }
+        public string Question { get; private set; }
+        public string AnchorLeft { get; private set; }
+        public string AnchorRight { get; private set; }
 
-}
-public class IPQ_Question
-{
-    private string question;
-    private string anchor_negative;
-    private string anchor_positive;
-
-    public IPQ_Question(string question, string anchor_negative, string anchor_positive)
-    {
-        this.question = question;
-        this.anchor_negative = anchor_negative;
-        this.anchor_positive = anchor_positive;
-    }
-
-    public string get_question()
-    {
-        return question;
-    }
-
-    public string get_positive_anchor()
-    {
-        return anchor_positive;
-    }
-
-    public string get_negative_anchor()
-    {
-        return anchor_negative;
+        public QuestionnaireItem(string question, string anchorLeft, string anchorRight)
+        {
+            Question = question;
+            AnchorLeft = anchorLeft;
+            AnchorRight = anchorRight;
+        }
     }
 }

@@ -1,99 +1,117 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-// using System.Diagnostics;
-using System.IO;
-using Palmmedia.ReportGenerator.Core.Reporting.Builders;
-using UnityEditor;
 using UnityEngine;
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 public class StudySetupManager : MonoBehaviour
 {
-    // Latin Square csv load
+    [Header("Input files")]
     public TextAsset latinSquareCsv;
     public TextAsset finishedIds;
-    public int pid;
-    private TextWriter tw;
 
-    // Start is called before the first frame update
+    [Header("Participant")]
+    public int pid;
+
+    [Header("Study setup")]
+    [SerializeField] private int totalConditions = 6;
+
     void Start()
     {
         PlayerPrefs.DeleteAll();
-        // set PlayerID
-        PlayerPrefs.SetInt("pid", pid);  
-        // save sceneCounter PlayerPrefs.SetInt(sceneCounter, 0)
+        PlayerPrefs.SetInt("pid", pid);
         PlayerPrefs.SetInt("scene counter", 1);
-        // load csv/scene reihenfolge corresponding to pid
-        loadCSV();
-        // print ID, counter + scenereihenfolge
-        checkIDs();
-    }
 
-    private void checkIDs()
-    {
-        string[] lines = finishedIds.text.Split('\n');
-
-        foreach (string line in lines)
+        if (IsFinishedId(pid))
         {
-            string[] values = line.Split(";");
-            if (values[0] == "ID")
-            {
-                continue;
-            }
+            StopStudy($"Participant ID {pid} is already marked as finished.");
+            return;
+        }
 
-            int readID = int.Parse(values[0]);
-
-            if (readID == pid)
-            {
-                EditorUtility.DisplayDialog("Caution!", "ID already finished, please update it!", "OK, I will check ID on paper and update it!");
-                EditorApplication.isPlaying = false;
-                break;
-            }
-
+        if (!LoadConditionOrder())
+        {
+            StopStudy($"Participant ID {pid} was not found in the Latin square CSV.");
+            return;
         }
 
         PlayerPrefs.SetString("starttime", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString());
+        PlayerPrefs.Save();
+
+        Debug.Log($"PID: {pid}");
+        for (int i = 1; i <= totalConditions; i++)
+        {
+            Debug.Log($"s{i}: {PlayerPrefs.GetInt("s" + i)}");
+        }
     }
 
-    private void loadCSV() {
-        string[] lines = latinSquareCsv.text.Split('\n');
+    private bool IsFinishedId(int idToCheck)
+    {
+        if (finishedIds == null) return false;
 
-    	foreach (string line in lines) {
+        foreach (string rawLine in finishedIds.text.Split('\n'))
+        {
+            string line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line)) continue;
 
-            string[] values = line.Split(";");
-            if (values[0] == "ID") {
-                continue;
-            }
+            string[] values = line.Split(';');
+            if (values.Length == 0) continue;
+            if (values[0].Trim().Equals("ID", StringComparison.OrdinalIgnoreCase)) continue;
 
-            int readID = int.Parse(values[0]);
-
-            if (readID == pid) {
-                Debug.Log("csv line: " + line);
-
-                PlayerPrefs.SetInt("s1", int.Parse(values[1]));
-                PlayerPrefs.SetInt("s2", int.Parse(values[2]));
-                PlayerPrefs.SetInt("s3", int.Parse(values[3]));
-                PlayerPrefs.SetInt("s4", int.Parse(values[4]));
-                //PlayerPrefs.SetInt("s5", int.Parse(values[5]));
-                //PlayerPrefs.SetInt("s6", int.Parse(values[6]));
-
-                Debug.Log(PlayerPrefs.GetInt("s1"));
-                Debug.Log(PlayerPrefs.GetInt("s2"));
-                Debug.Log(PlayerPrefs.GetInt("s3"));
-                Debug.Log(PlayerPrefs.GetInt("s4"));
-                //Debug.Log(PlayerPrefs.GetInt("s5"));
-                //Debug.Log(PlayerPrefs.GetInt("s6"));
-
-
-                break;
+            if (int.TryParse(values[0].Trim(), out int readId) && readId == idToCheck)
+            {
+                return true;
             }
         }
 
+        return false;
     }
 
-    // Update is called once per frame
-    void Update()
+    private bool LoadConditionOrder()
     {
-        
+        if (latinSquareCsv == null) return false;
+
+        foreach (string rawLine in latinSquareCsv.text.Split('\n'))
+        {
+            string line = rawLine.Trim();
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            string[] values = line.Split(';');
+            if (values.Length < totalConditions + 1) continue;
+            if (values[0].Trim().Equals("ID", StringComparison.OrdinalIgnoreCase)) continue;
+
+            if (!int.TryParse(values[0].Trim(), out int readId)) continue;
+
+            if (readId == pid)
+            {
+                for (int i = 1; i <= totalConditions; i++)
+                {
+                    if (int.TryParse(values[i].Trim(), out int sceneIndex))
+                    {
+                        PlayerPrefs.SetInt("s" + i, sceneIndex);
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
-}
+
+    private void StopStudy(string message)
+    {
+        Debug.LogError(message);
+
+#if UNITY_EDITOR
+        EditorUtility.DisplayDialog("Study setup error", message, "OK");
+        EditorApplication.isPlaying = false;
+#else
+        Application.Quit();
+#endif
+    }
+} 
