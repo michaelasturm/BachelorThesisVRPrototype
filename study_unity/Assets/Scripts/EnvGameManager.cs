@@ -12,7 +12,7 @@ public class EnvGameManager : MonoBehaviour
 {
     // Target stuff
     [Header("TargetManager")]
-    [SerializeField] private float targetTimout = 2f;// TODO 7f
+    [SerializeField] private float targetTimout = 7f;// TODO 7f
     private float targetTimer = 0f;
     public GameObject targetHolder;
     private int numTargets;
@@ -29,20 +29,20 @@ public class EnvGameManager : MonoBehaviour
     private float gazeTimer = 0f;
 
     [Header("Gaze Interaction Manager")]
-    [SerializeField] private float minGazeTime = 1f; //TODO 5f
+    [SerializeField] private float minGazeTime = 5f; //TODO 5f
     private Image timeFeedback;
 
     // questionnaire stuff
 
     [Header("Questionnaire Manager")]
-    [SerializeField] private float questionnaireTimeInterval = 10f; //TODO 90f
+    [SerializeField] private float questionnaireTimeInterval = 90f; //TODO 90f
     private int questionnaireCount = 0; // TODO
     private bool isQuestionaireDone = false;
     public Slider slider;
     public GameObject thermalSensationUI;
     private bool isQuestionTime = false;
-    private float[] thermalSensationScores = new float[6];
-    private long[] questionTimestamps = new long[6];
+    private float[] thermalSensationScores = new float[3];
+    private long[] questionTimestamps = new long[3];
 
 
     // Scene Manager
@@ -50,7 +50,7 @@ public class EnvGameManager : MonoBehaviour
     private float questionTimer = 0f;
 
     [Header("Scene Manager")]
-    [SerializeField] private float maxSceneTime = 30f; //TODO 10 minutes?
+    [SerializeField] private float maxSceneTime = 300f; //TODO 5 minutes?
 
     private TextWriter tw;
     private string filePath = Application.dataPath + "/CSV-Data/env_.csv";
@@ -135,8 +135,8 @@ public class EnvGameManager : MonoBehaviour
         if (sceneTimer >= maxSceneTime && isQuestionaireDone)
         {
             // scene change
-            // TODO 1
-            SceneManager.LoadScene(1); // TODO
+            // TODO 5
+            SceneManager.LoadScene(5); // TODO
         }
     }
 
@@ -154,7 +154,7 @@ public class EnvGameManager : MonoBehaviour
     {
         // save
         // set avtive false
-        if (questionnaireCount <= 5)
+        if (questionnaireCount < 3)
         {
 
             thermalSensationScores[questionnaireCount] = slider.value;
@@ -163,7 +163,7 @@ public class EnvGameManager : MonoBehaviour
         }
 
         // 6th questionnaire taken
-        if (questionnaireCount > 5)
+        if (questionnaireCount >= 3)
         {
             writeCSV();
             isQuestionaireDone = true;
@@ -176,7 +176,7 @@ public class EnvGameManager : MonoBehaviour
 
     private void writeCSV()
     {
-        string header = "id;scene;thermal_sensation_90; thermal_sensation_180; thermal_sensation_270; thermal_sensation_360; thermal_sensation_450;thermal_sensation_540; time_90; time_180; time_270; time_360; time_450; time_540";
+        string header = "id;scene;thermal_sensation_90;thermal_sensation_180;thermal_sensation_270;time_90;time_180;time_270"; ;
         tw = new StreamWriter(filePath, true);
         tw.WriteLine(header);
 

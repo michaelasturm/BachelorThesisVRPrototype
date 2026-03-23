@@ -460,12 +460,17 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1261728003}
   m_SourcePrefab: {fileID: 100100000, guid: df9fd5b728c44db4abe755b579badf3f, type: 3}
---- !u!1 &344338268 stripped
+--- !u!20 &344338268 stripped
+Camera:
+  m_CorrespondingSourceObject: {fileID: 5449143459841447814, guid: df9fd5b728c44db4abe755b579badf3f, type: 3}
+  m_PrefabInstance: {fileID: 344338267}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &344338269 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5449143459726571265, guid: df9fd5b728c44db4abe755b579badf3f, type: 3}
   m_PrefabInstance: {fileID: 344338267}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &344338269 stripped
+--- !u!1 &344338270 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5449143461362333694, guid: df9fd5b728c44db4abe755b579badf3f, type: 3}
   m_PrefabInstance: {fileID: 344338267}
@@ -1024,20 +1029,10 @@ MonoBehaviour:
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
---- !u!1 &825832266 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6083927826771666712, guid: eea973293b5bdb74a8052a20fa22854a, type: 3}
-  m_PrefabInstance: {fileID: 1585365596358473243}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &825832267 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 7639492709472178283, guid: eea973293b5bdb74a8052a20fa22854a, type: 3}
   m_PrefabInstance: {fileID: 1585365596358473243}
-  m_PrefabAsset: {fileID: 0}
---- !u!20 &902509005 stripped
-Camera:
-  m_CorrespondingSourceObject: {fileID: 5449143459841447814, guid: df9fd5b728c44db4abe755b579badf3f, type: 3}
-  m_PrefabInstance: {fileID: 344338267}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &963194225
 GameObject:
@@ -1222,17 +1217,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee67ed3da29c85541a03036a1169355d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetTimout: 2
+  targetTimout: 10
   targetHolder: {fileID: 1878800555}
-  cam: {fileID: 902509005}
+  cam: {fileID: 344338268}
   reticle: {fileID: 584870164}
-  minGazeTime: 1
-  questionnaireTimeInterval: 10
-  slider: {fileID: 1833831776}
-  thermalSensationUI: {fileID: 825832266}
-  maxSceneTime: 30
-  leftControllerRay: {fileID: 344338269}
-  rightControllerRay: {fileID: 344338268}
+  minGazeTime: 5
+  questionnaireTimeInterval: 90
+  slider: {fileID: 1585365596358473245}
+  thermalSensationUI: {fileID: 1585365596358473244}
+  maxSceneTime: 300
+  leftControllerRay: {fileID: 344338270}
+  rightControllerRay: {fileID: 344338269}
 --- !u!114 &974524393
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1451,17 +1446,6 @@ Transform:
   - {fileID: 479251207}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1833831776 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 2067803285287520035, guid: eea973293b5bdb74a8052a20fa22854a, type: 3}
-  m_PrefabInstance: {fileID: 1585365596358473243}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1001 &1878800554
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1829,6 +1813,22 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: eea973293b5bdb74a8052a20fa22854a, type: 3}
+--- !u!1 &1585365596358473244 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6083927826771666712, guid: eea973293b5bdb74a8052a20fa22854a, type: 3}
+  m_PrefabInstance: {fileID: 1585365596358473243}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1585365596358473245 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 2067803285287520035, guid: eea973293b5bdb74a8052a20fa22854a, type: 3}
+  m_PrefabInstance: {fileID: 1585365596358473243}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67db9e8f0e2ae9c40bc1e2b64352a6b4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

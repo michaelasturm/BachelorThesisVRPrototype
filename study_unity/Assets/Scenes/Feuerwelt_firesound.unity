@@ -524,15 +524,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee67ed3da29c85541a03036a1169355d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetTimout: 2
+  targetTimout: 10
   targetHolder: {fileID: 1015055234}
   cam: {fileID: 1881648294}
   reticle: {fileID: 1530260653}
-  minGazeTime: 1
-  questionnaireTimeInterval: 10
+  minGazeTime: 5
+  questionnaireTimeInterval: 90
   slider: {fileID: 985527554}
   thermalSensationUI: {fileID: 985527552}
-  maxSceneTime: 30
+  maxSceneTime: 300
   leftControllerRay: {fileID: 802696529}
   rightControllerRay: {fileID: 802696530}
 --- !u!4 &848629928
@@ -575,6 +575,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   HMD: {fileID: 1881648293}
+  sampleInterval: 0.05
 --- !u!1001 &985527551
 PrefabInstance:
   m_ObjectHideFlags: 0

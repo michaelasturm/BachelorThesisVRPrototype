@@ -11,7 +11,7 @@ public class QuestionnaireManager : MonoBehaviour
 {
     [Header("Study Flow")]
     [SerializeField] private float minWaitTime = 3f;
-    [SerializeField] private int totalConditions = 6;
+    [SerializeField] private int totalConditions = 4;
     [SerializeField] private int[] soundEnvironmentIds;
 
     [Header("Waiting UI")]
@@ -71,6 +71,8 @@ public class QuestionnaireManager : MonoBehaviour
         scenecounter = PlayerPrefs.GetInt("scene counter");
         userId = PlayerPrefs.GetInt("pid");
         envIndex = PlayerPrefs.GetInt("s" + scenecounter);
+
+        Debug.Log($"Questionnaire Start | sceneCounter={scenecounter} | envIndex={envIndex}");
 
         conditionHasSound = HasSound(envIndex);
 
@@ -134,9 +136,11 @@ public class QuestionnaireManager : MonoBehaviour
         ipqUi.SetActive(true);
         ResetToggles(tgComfort);
     }
-
+   
     public void checkIPQ()
     {
+        Debug.Log("checkIPQ called by click");
+
         Toggle toggle = tgIPQ.ActiveToggles().FirstOrDefault();
         if (toggle == null)
         {
@@ -163,6 +167,7 @@ public class QuestionnaireManager : MonoBehaviour
 
     public void checkSound()
     {
+        Debug.Log("checkSound called by click");
         if (!conditionHasSound)
         {
             Debug.LogWarning("checkSound() was called, but this condition has no sound block.");
@@ -175,6 +180,7 @@ public class QuestionnaireManager : MonoBehaviour
             Debug.Log("No sound option selected.");
             return;
         }
+        Debug.Log("Selected sound toggle: " + toggle.name);
 
         soundAnswers[currentSoundQuestion] = GetToggleValue(toggle);
 
@@ -195,13 +201,20 @@ public class QuestionnaireManager : MonoBehaviour
 
     private void BuildPaths()
     {
-        string dir = Path.Combine(Application.persistentDataPath, "CSV-Data");
+        string dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+            "ThermoVR_CSV"
+        );
+
         string finishedDir = Path.Combine(dir, "FinishedIDs");
         Directory.CreateDirectory(dir);
         Directory.CreateDirectory(finishedDir);
 
         filePath = Path.Combine(dir, $"{userId}_count{scenecounter}_env{envIndex}_questionnaire.csv");
         filePathFinishedIds = Path.Combine(finishedDir, "finishedIds.csv");
+
+        Debug.Log("Saving questionnaire to: " + filePath);
+        Debug.Log("Saving finished IDs to: " + filePathFinishedIds);
     }
 
     private void LoadQuestions()
@@ -316,8 +329,12 @@ public class QuestionnaireManager : MonoBehaviour
 
     private void BeginSoundBlockOrFinish()
     {
+        Debug.Log($"BeginSoundBlockOrFinish | envIndex={envIndex} | conditionHasSound={conditionHasSound} | soundQuestions={soundQuestions.Length}");
+
         if (conditionHasSound && soundQuestions.Length > 0)
         {
+            currentSoundQuestion = 0;
+            ResetToggles(tgSound);
             soundUi.SetActive(true);
             SetSoundQuestion();
             return;
@@ -327,7 +344,6 @@ public class QuestionnaireManager : MonoBehaviour
         isSoundAnswered = true;
         FinishQuestionnaire();
     }
-
     private void FinishQuestionnaire()
     {
         if (!isComfortAnswered || !isIpqAnswered || !isSoundAnswered)
@@ -363,6 +379,9 @@ public class QuestionnaireManager : MonoBehaviour
 
         timer = 0f;
         isTransitionPending = true;
+
+        Debug.Log("WriteQuestionnaireCSV called");
+        Debug.Log("Saving questionnaire to: " + filePath);
     }
 
     private void WriteQuestionnaireCSV()
@@ -427,6 +446,7 @@ public class QuestionnaireManager : MonoBehaviour
     private void LoadNextScene()
     {
         int nextCounter = PlayerPrefs.GetInt("scene counter");
+        
 
         if (nextCounter > totalConditions)
         {
@@ -439,6 +459,7 @@ public class QuestionnaireManager : MonoBehaviour
             Debug.LogError($"No scene assigned for s{nextCounter}.");
             return;
         }
+        Debug.Log($"LoadNextScene | nextCounter={nextCounter} | nextSceneIndex={nextSceneIndex}");
 
         SceneManager.LoadScene(nextSceneIndex);
     }

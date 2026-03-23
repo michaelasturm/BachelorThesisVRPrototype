@@ -15,7 +15,7 @@ public class StudySetupManager : MonoBehaviour
     public int pid;
 
     [Header("Study setup")]
-    [SerializeField] private int totalConditions = 6;
+    [SerializeField] private int totalConditions = 4;
 
     void Start()
     {
